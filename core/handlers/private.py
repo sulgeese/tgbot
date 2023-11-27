@@ -7,14 +7,14 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from core.filters.datefilter import DateFilter, DateNotPassed
 from core.utils.statesform import StepsForm
-from core.utils.date import datetime_to_str, str_to_datetime
+from core.utils.convert import datetime_to_str, str_to_datetime
 from core.utils.entities import entities_to_str, str_to_entities
 from core.templates.privateTMPL import *
 from core.keyboard.inline import confirmation
 from core.keyboard.reply import cancel_keyboard
 from core.handlers.apsched import send_message_by_date
-
 from datetime import datetime, timedelta
+
 
 pr_router = Router()
 pr_router.message.filter(F.chat.type == "private")
@@ -80,14 +80,14 @@ async def get_date(message: Message, state: FSMContext):
 
 
 @pr_router.message(StepsForm.GET_DATE, DateFilter())
-async def get_date(message: Message):
+async def get_date_inc(message: Message):
     await message.answer(
         text=incorrect_date,
         parse_mode='HTML')
 
 
 @pr_router.message(StepsForm.GET_DATE)
-async def get_date(message: Message):
+async def get_date_incf(message: Message):
     await message.answer(
         text=incorrect_date_format.format(datetime_to_str(datetime.now())),
         parse_mode='HTML')
@@ -107,7 +107,7 @@ async def get_text(message: Message, state: FSMContext):
 
 
 @pr_router.message(StepsForm.GET_TEXT)
-async def get_text(message: Message):
+async def get_text_inc(message: Message):
     await message.answer(
         text=incorrect_text,
         parse_mode='HTML')

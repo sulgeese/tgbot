@@ -19,11 +19,3 @@ def str_to_entities(string: str) -> list[MessageEntity] | None:
     for kwargs in lst:
         entities.append(MessageEntity(**kwargs))
     return entities
-
-
-# def change_offset(entities: list, step: int) -> list[MessageEntity] | None:
-#     if not entities:
-#         return None
-#     for ent in entities:
-#         ent.offset += step
-#     return entities
