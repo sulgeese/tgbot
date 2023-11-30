@@ -1,6 +1,7 @@
-from core.settings import settings
+from bot.utils.entities import str_to_entities
+from bot.settings import settings
+
 from aiogram import Bot
-from core.utils.entities import str_to_entities
 
 
 async def send_message_by_date(bot: Bot, text: str, entities: str) -> None:

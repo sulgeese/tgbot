@@ -1,6 +1,7 @@
-from aiogram.filters import BaseFilter
-from aiogram.types import TelegramObject, ChatMember
 from sqlalchemy.ext.asyncio import AsyncSession
+from aiogram.filters import BaseFilter
+from aiogram.types import TelegramObject
+from aiogram.types import ChatMember
 
 from bot.db.requests import get_users_in_group
 

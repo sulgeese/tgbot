@@ -1,33 +1,43 @@
-from aiogram import F, Router
-from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
-from aiogram.filters import Command
-from aiogram.fsm.context import FSMContext
-
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+from bot.templates.privateTMPL import *
+from bot.utils.statesform import StepsForm
+from bot.utils.entities import entities_to_str
+from bot.utils.entities import str_to_entities
+from bot.utils.convert import datetime_to_str
+from bot.utils.convert import str_to_datetime
+from bot.filters.date import DateNotPassed
+from bot.filters.date import DateFilter
+from bot.filters.user import UserInGroup
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.filters.date import DateFilter, DateNotPassed
-from bot.utils.statesform import StepsForm
-from bot.utils.convert import datetime_to_str, str_to_datetime
-from bot.utils.entities import entities_to_str, str_to_entities
-from bot.templates.privateTMPL import *
+from bot.handlers.apsched import send_message_by_date
 from bot.keyboard.inline import confirmation
 from bot.keyboard.reply import cancel_keyboard
-from bot.handlers.apsched import send_message_by_date
 from bot.db.requests import insert_event
 
-from datetime import datetime, timedelta
+from aiogram.fsm.context import FSMContext
+from aiogram.filters import Command
+from aiogram.types import ReplyKeyboardRemove
+from aiogram.types import CallbackQuery
+from aiogram.types import Message
+
+from datetime import timedelta
+from datetime import datetime
+
+from aiogram import Router
+from aiogram import F
+
+pr_members_router = Router()
+
+pr_members_router.message.filter(F.chat.type == "private", UserInGroup())
+pr_members_router.chat_member.filter(F.chat.type == "private", UserInGroup())
+pr_members_router.callback_query.filter(F.message.chat.type == "private", UserInGroup())
 
 
-pr_router = Router()
-pr_router.message.filter(F.chat.type == "private")
-pr_router.chat_member.filter(F.chat.type == "private")
-pr_router.callback_query.filter(F.message.chat.type == "private")
-
-
-@pr_router.message(Command('create_event'))
-async def create_announcement_command(message: Message, state: FSMContext):
+@pr_members_router.message(Command('create_event'))
+async def create_event_command(message: Message, state: FSMContext):
     await message.delete()
     await message.answer(
         text=enter_date.format(datetime_to_str(datetime.now())),
@@ -37,8 +47,8 @@ async def create_announcement_command(message: Message, state: FSMContext):
 
 
 # Нажатие на кнопку
-@pr_router.message(StepsForm.GET_TEXT, F.text == 'Отмена')
-@pr_router.message(StepsForm.GET_DATE, F.text == 'Отмена')
+@pr_members_router.message(StepsForm.GET_TEXT, F.text == 'Отмена')
+@pr_members_router.message(StepsForm.GET_DATE, F.text == 'Отмена')
 async def go_back_i_want_to_be_monkey(message: Message, state: FSMContext):
     await message.delete()
     await message.answer(
@@ -49,7 +59,7 @@ async def go_back_i_want_to_be_monkey(message: Message, state: FSMContext):
 
 
 # Колбеки
-@pr_router.callback_query(F.data == 'cancel')
+@pr_members_router.callback_query(F.data == 'cancel')
 async def cancel_call(call: CallbackQuery, state: FSMContext):
     await call.message.delete()
     await call.message.answer(
@@ -58,7 +68,7 @@ async def cancel_call(call: CallbackQuery, state: FSMContext):
     await state.clear()
 
 
-@pr_router.callback_query(F.data == 'confirm')
+@pr_members_router.callback_query(F.data == 'confirm')
 async def confirm_call(call: CallbackQuery, state: FSMContext, scheduler: AsyncIOScheduler, session: AsyncSession):
     await call.message.delete()
     data = await state.get_data()
@@ -66,14 +76,14 @@ async def confirm_call(call: CallbackQuery, state: FSMContext, scheduler: AsyncI
         send_message_by_date,
         trigger='date',
         run_date=max(str_to_datetime(data['date']), datetime.now() + timedelta(seconds=5)),
-        kwargs={'text': data['text'], 'entities': data['entities']})
+        kwargs={'text': data['text'], 'entities': data['entities']}
+    )
     await insert_event(
         session=session,
         date=str_to_datetime(data['date']),
         text=data['text'],
         user_id=call.from_user.id,
     )
-
     await state.clear()
     await call.message.answer(
         text=event_added,
@@ -82,7 +92,7 @@ async def confirm_call(call: CallbackQuery, state: FSMContext, scheduler: AsyncI
 
 
 # Дата
-@pr_router.message(StepsForm.GET_DATE, DateFilter(), DateNotPassed())
+@pr_members_router.message(StepsForm.GET_DATE, DateFilter(), DateNotPassed())
 async def get_date(message: Message, state: FSMContext):
     await state.set_state(StepsForm.GET_TEXT)
     await state.update_data(date=message.text)
@@ -91,14 +101,14 @@ async def get_date(message: Message, state: FSMContext):
         parse_mode='HTML')
 
 
-@pr_router.message(StepsForm.GET_DATE, DateFilter())
+@pr_members_router.message(StepsForm.GET_DATE, DateFilter())
 async def get_date_inc(message: Message):
     await message.answer(
         text=incorrect_date,
         parse_mode='HTML')
 
 
-@pr_router.message(StepsForm.GET_DATE)
+@pr_members_router.message(StepsForm.GET_DATE)
 async def get_date_incf(message: Message):
     await message.answer(
         text=incorrect_date_format.format(datetime_to_str(datetime.now())),
@@ -106,7 +116,7 @@ async def get_date_incf(message: Message):
 
 
 # Текст
-@pr_router.message(StepsForm.GET_TEXT, F.text)
+@pr_members_router.message(StepsForm.GET_TEXT, F.text)
 async def get_text(message: Message, state: FSMContext):
     await state.update_data(text=message.text, entities=entities_to_str(message.entities))
     data = await state.get_data()
@@ -118,7 +128,7 @@ async def get_text(message: Message, state: FSMContext):
         reply_markup=confirmation)
 
 
-@pr_router.message(StepsForm.GET_TEXT)
+@pr_members_router.message(StepsForm.GET_TEXT)
 async def get_text_inc(message: Message):
     await message.answer(
         text=incorrect_text,

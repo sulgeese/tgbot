@@ -1,4 +1,6 @@
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton
+
 
 confirmation = InlineKeyboardMarkup(
     inline_keyboard=[

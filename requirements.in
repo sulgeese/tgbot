@@ -1,0 +1,8 @@
+aiogram
+environs
+redis
+APScheduler
+apscheduler-di
+SQLAlchemy
+alembic
+asyncpg

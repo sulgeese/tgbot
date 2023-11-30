@@ -1,10 +1,10 @@
-from aiogram import Bot
+from bot.utils.commands import set_commands
+from bot.utils.convert import datetime_to_str
+from bot.settings import settings
 
 from datetime import datetime
 
-from core.settings import settings
-from core.utils.commands import set_commands
-from core.utils.convert import datetime_to_str
+from aiogram import Bot
 
 
 async def on_startup(bot: Bot):

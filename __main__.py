@@ -1,18 +1,23 @@
-from aiogram import Bot, Dispatcher
-from aiogram.fsm.storage.redis import RedisStorage
-
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.redis import RedisJobStore
 from apscheduler_di import ContextSchedulerDecorator
 
-from bot.settings import settings
-from bot.handlers.private import pr_router
+from bot.handlers.privatemembers import pr_members_router
+from bot.handlers.privateall import pr_all_router
 from bot.handlers.supergroup import sgr_router
-from bot.handlers.basic import on_startup, end_message
-from bot.db.models import Base
-from bot.db.engine import create_engine, proceed_schemas, get_session_maker
-from bot.middleware.group import GroupMiddleware
+from bot.handlers.basic import end_message
+from bot.handlers.basic import on_startup
+from bot.middleware.users import GroupMiddleware
 from bot.middleware.db import DbSessionMiddleware
+from bot.db.engine import get_session_maker
+from bot.db.engine import proceed_schemas
+from bot.db.engine import create_engine
+from bot.db.base import Base
+from bot.settings import settings
+from bot.misc import redis
+
+from aiogram.fsm.storage.redis import RedisStorage
+from aiogram import Bot, Dispatcher
 
 import asyncio
 import logging
@@ -41,8 +46,6 @@ async def start():
     scheduler.ctx.add_instance(bot, declared_class=Bot)
     scheduler.start()
 
-    storage = RedisStorage.from_url('redis://localhost:6379/0')
-
     async_engine = create_engine(
         drivername=settings.db.drivername,
         username=settings.db.username,
@@ -54,13 +57,14 @@ async def start():
     session_maker = get_session_maker(async_engine)
     await proceed_schemas(async_engine, Base.metadata)
 
-    dp = Dispatcher(scheduler=scheduler, storage=storage)
+    dp = Dispatcher(scheduler=scheduler, storage=RedisStorage(redis=redis))
     dp.startup.register(on_startup)
     dp.shutdown.register(end_message)
-    dp.include_router(pr_router)
-    dp.include_router(sgr_router)
     dp.update.middleware(GroupMiddleware())
     dp.update.middleware(DbSessionMiddleware(session_maker))
+    dp.include_router(pr_members_router)
+    dp.include_router(pr_all_router)
+    dp.include_router(sgr_router)
 
     try:
         await bot.delete_webhook(drop_pending_updates=True)
