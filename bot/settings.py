@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from environs import Env
+from sqlalchemy import URL
 
 
 @dataclass
@@ -26,10 +27,17 @@ class Other:
 
 
 @dataclass
+class Redis:
+    port: int
+    host: str
+
+
+@dataclass
 class Settings:
     bots: Bots
     db: DataBase
     other: Other
+    redis: Redis
 
 
 def get_settings(path: str):
@@ -52,9 +60,13 @@ def get_settings(path: str):
             port=env.int("DB_PORT"),
         ),
         other=Other(
-            timezone=env.str("OTHER_TIMEZONE")
-        )
+            timezone=env.str("OTHER_TIMEZONE"),
+        ),
+        redis=Redis(
+            port=env.int("REDIS_PORT"),
+            host=env.str("REDIS_HOST"),
+        ),
     )
 
 
-settings = get_settings('input_test')
+settings = get_settings('.env')

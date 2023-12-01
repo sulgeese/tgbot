@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.db.requests import insert_user
 from bot.db.requests import del_user
 
-from bot.misc import redis
+from bot.db.redis import redis
 
 
 sgr_router = Router()

@@ -1,23 +1,18 @@
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.jobstores.redis import RedisJobStore
-from apscheduler_di import ContextSchedulerDecorator
-
 from bot.handlers.privatemembers import pr_members_router
 from bot.handlers.privateall import pr_all_router
 from bot.handlers.supergroup import sgr_router
+from bot.scheduler.scheduler import run_and_get_scheduler
 from bot.handlers.basic import end_message
 from bot.handlers.basic import on_startup
 from bot.middleware.users import GroupMiddleware
 from bot.middleware.db import DbSessionMiddleware
-from bot.db.engine import get_session_maker
-from bot.db.engine import proceed_schemas
-from bot.db.engine import create_engine
-from bot.db.base import Base
+from bot.db.engine import connect_to_db
 from bot.settings import settings
-from bot.misc import redis
+from bot.db.redis import redis
 
 from aiogram.fsm.storage.redis import RedisStorage
-from aiogram import Bot, Dispatcher
+from aiogram import Dispatcher
+from aiogram import Bot
 
 import asyncio
 import logging
@@ -33,29 +28,8 @@ async def start():
     logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
 
     bot = Bot(token=settings.bots.token)
-
-    jobstores = {'default': RedisJobStore(
-        jobs_key='dispatched_trips_jobs',
-        run_times_key='dispatched_trips_running',
-        host='localhost',
-        db=2,
-        port=6379,
-    )}
-
-    scheduler = ContextSchedulerDecorator(AsyncIOScheduler(timezone=settings.other.timezone, jobstores=jobstores))
-    scheduler.ctx.add_instance(bot, declared_class=Bot)
-    scheduler.start()
-
-    async_engine = create_engine(
-        drivername=settings.db.drivername,
-        username=settings.db.username,
-        password=settings.db.password,
-        host=settings.db.host,
-        port=settings.db.port,
-        database=settings.db.database,
-    )
-    session_maker = get_session_maker(async_engine)
-    await proceed_schemas(async_engine, Base.metadata)
+    scheduler = run_and_get_scheduler(bot)
+    session_maker = await connect_to_db()
 
     dp = Dispatcher(scheduler=scheduler, storage=RedisStorage(redis=redis))
     dp.startup.register(on_startup)

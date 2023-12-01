@@ -1,27 +1,22 @@
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.ext.asyncio import AsyncEngine
+from sqlalchemy import URL
 
-from sqlalchemy.engine import URL
+from bot.settings import settings
+from bot.db.base import *
 
 
-def create_engine(drivername: str, username: str, password: str, host: str, port: int, database: str) -> AsyncEngine:
+async def connect_to_db() -> async_sessionmaker:
     url = URL.create(
-        drivername=drivername,
-        username=username,
-        password=password,
-        host=host,
-        port=port,
-        database=database,
+        drivername=settings.db.drivername,
+        username=settings.db.username,
+        password=settings.db.password,
+        host=settings.db.host,
+        port=settings.db.port,
+        database=settings.db.database,
     )
-    return create_async_engine(url=url)
-
-
-async def proceed_schemas(engine: AsyncEngine, metadata) -> None:
-    async with engine.begin() as connect:
-        await connect.run_sync(metadata.create_all)
-
-
-def get_session_maker(engine: AsyncEngine) -> async_sessionmaker:
-    return async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async_engine = create_async_engine(url=url)
+    async with async_engine.begin() as connect:
+        await connect.run_sync(Base.metadata.create_all)
+    return async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)

@@ -4,7 +4,7 @@ from sqlalchemy import select
 
 from bot.db.models import GroupUsersModel
 from bot.db.models import EventsModel
-from bot.misc import redis
+from bot.db.redis import redis
 
 from contextlib import suppress
 from datetime import datetime
