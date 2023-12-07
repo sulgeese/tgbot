@@ -1,7 +1,10 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from bot.templates.privateTMPL import *
-from bot.utils.statesform import StepsForm
+from bot.handlers.apsched import send_message_by_date
+from bot.keyboard.inline import confirmation
+from bot.keyboard.reply import cancel_keyboard
+from bot.keyboard.reply import webapp_keyboard
 from bot.utils.entities import entities_to_str
 from bot.utils.entities import str_to_entities
 from bot.utils.convert import datetime_to_str
@@ -9,31 +12,36 @@ from bot.utils.convert import str_to_datetime
 from bot.filters.date import DateNotPassed
 from bot.filters.date import DateFilter
 from bot.filters.user import UserInGroup
+from bot.db.requests import insert_event
+from bot.states.user import StepsForm
 
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from bot.handlers.apsched import send_message_by_date
-from bot.keyboard.inline import confirmation
-from bot.keyboard.reply import cancel_keyboard
-from bot.db.requests import insert_event
 
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import Command
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.types import CallbackQuery
 from aiogram.types import Message
+from aiogram import Router
+from aiogram import F
 
 from datetime import timedelta
 from datetime import datetime
 
-from aiogram import Router
-from aiogram import F
 
 pr_members_router = Router()
 
 pr_members_router.message.filter(F.chat.type == "private", UserInGroup())
 pr_members_router.chat_member.filter(F.chat.type == "private", UserInGroup())
 pr_members_router.callback_query.filter(F.message.chat.type == "private", UserInGroup())
+
+
+@pr_members_router.message(Command('start'))
+async def start_command(message: Message):
+    await message.answer(
+        text=start,
+        reply_markup=webapp_keyboard,
+    )
 
 
 @pr_members_router.message(Command('create_event'))

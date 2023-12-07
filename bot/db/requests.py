@@ -8,7 +8,6 @@ from bot.db.redis import redis
 
 from contextlib import suppress
 from datetime import datetime
-import json
 
 
 async def insert_user(session: AsyncSession, user_id: int, username: str, first_name: str | None,
@@ -30,13 +29,12 @@ async def del_user(session: AsyncSession, user_id: int) -> None:
         await session.commit()
 
 
-async def get_users_in_group(session: AsyncSession) -> list:
-    if await redis.get("users") is None:
-        users = await session.execute(select(GroupUsersModel))
-        data = [user.user_id for user in users.scalars().all()]
-        await redis.set('users', json.dumps(data))
-    res = await redis.get("users")
-    return json.loads(res)
+async def user_in_group(session: AsyncSession, user_id: str) -> bool:
+    if not await redis.exists('users'):
+        data = await session.execute(select(GroupUsersModel))
+        data = [str(user.user_id) for user in data.scalars().all()]
+        await redis.lpush('users', *data)
+    return not (await redis.lpos('users', user_id) is None)
 
 
 async def insert_event(session: AsyncSession, date: datetime, text: str, user_id: int) -> None:

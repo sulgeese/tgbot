@@ -12,4 +12,4 @@ pr_all_router.callback_query.filter(F.message.chat.type == "private", UserNotInG
 
 @pr_all_router.message()
 async def botic(message: Message):
-    await message.answer(text='ты ботик')
+    await message.answer(text='ты не в группе')

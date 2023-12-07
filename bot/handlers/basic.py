@@ -1,4 +1,4 @@
-from bot.utils.commands import set_commands
+from bot.keyboard.commands import set_commands
 from bot.utils.convert import datetime_to_str
 from bot.settings import settings
 
