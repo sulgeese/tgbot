@@ -1,10 +1,8 @@
-from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.ext.asyncio import async_sessionmaker
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy import URL
 
-from bot.settings import settings
-from bot.db.base import *
+from src.settings import settings
+from src.db.base import *
 
 
 async def connect_to_db() -> async_sessionmaker:
@@ -20,3 +18,4 @@ async def connect_to_db() -> async_sessionmaker:
     async with async_engine.begin() as connect:
         await connect.run_sync(Base.metadata.create_all)
     return async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
+

@@ -1,10 +1,7 @@
 from aiogram.types import TelegramObject
 from aiogram import BaseMiddleware
 
-from typing import Awaitable
-from typing import Callable
-from typing import Dict
-from typing import Any
+from typing import Awaitable, Callable, Dict, Any
 
 
 class DbSessionMiddleware(BaseMiddleware):

@@ -1,5 +1,6 @@
-from aiogram.types.message_entity import MessageEntity
 import json
+
+from aiogram.types.message_entity import MessageEntity
 
 
 def entities_to_str(entities: list) -> str:

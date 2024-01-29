@@ -1,8 +1,6 @@
-from aiogram.types import ReplyKeyboardMarkup
-from aiogram.types import KeyboardButton
-from aiogram.types import WebAppInfo
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
 
-web_app = WebAppInfo(url='https://sulgeese.github.io/')
+web_app = WebAppInfo(url='http://127.0.0.1:8000')
 
 cancel_keyboard = ReplyKeyboardMarkup(
     keyboard=[

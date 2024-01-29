@@ -1,12 +1,9 @@
 from aiogram.types import TelegramObject
 from aiogram import BaseMiddleware
 
-from bot.settings import settings
+from typing import Awaitable, Callable, Dict, Any
 
-from typing import Awaitable
-from typing import Callable
-from typing import Dict
-from typing import Any
+from src.settings import settings
 
 
 class GroupMiddleware(BaseMiddleware):

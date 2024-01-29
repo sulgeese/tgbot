@@ -1,6 +1,6 @@
-from bot.settings import settings
-
 from redis.asyncio import Redis
+
+from src.settings import settings
 
 redis = Redis(
     port=settings.redis.port,

@@ -1,9 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.filters import BaseFilter
-from aiogram.types import TelegramObject
-from aiogram.types import ChatMember
+from aiogram.types import TelegramObject, ChatMember
 
-from bot.db.requests import user_in_group
+from src.db.requests import user_in_group
 
 
 class UserInGroup(BaseFilter):

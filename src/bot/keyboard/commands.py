@@ -1,5 +1,4 @@
-from aiogram.types import BotCommandScopeAllPrivateChats
-from aiogram.types import BotCommand
+from aiogram.types import BotCommandScopeAllPrivateChats, BotCommand
 from aiogram import Bot
 
 

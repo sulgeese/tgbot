@@ -2,9 +2,9 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.redis import RedisJobStore
 from apscheduler_di import ContextSchedulerDecorator
 
-from bot.settings import settings
-
 from aiogram import Bot
+
+from src.settings import settings
 
 
 def run_and_get_scheduler(bot: Bot):

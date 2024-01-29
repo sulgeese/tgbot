@@ -1,16 +1,11 @@
-from aiogram.filters.chat_member_updated import ChatMemberUpdatedFilter
-from aiogram.filters.chat_member_updated import JOIN_TRANSITION
-from aiogram.filters.chat_member_updated import LEAVE_TRANSITION
+from aiogram.filters.chat_member_updated import ChatMemberUpdatedFilter, JOIN_TRANSITION, LEAVE_TRANSITION
 from aiogram.types import Message
-from aiogram import Router
-from aiogram import F
+from aiogram import Router, F
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.db.requests import insert_user
-from bot.db.requests import del_user
-
-from bot.db.redis import redis
+from src.db.requests import insert_user, del_user
+from src.db.redis import redis
 
 
 sgr_router = Router()
