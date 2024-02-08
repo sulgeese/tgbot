@@ -7,7 +7,7 @@ from aiogram import Bot
 from src.settings import settings
 
 
-def run_and_get_scheduler(bot: Bot):
+def start_scheduler(bot: Bot):
     jobstores = {'default': RedisJobStore(
         jobs_key='dispatched_trips_jobs',
         run_times_key='dispatched_trips_running',

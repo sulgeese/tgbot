@@ -5,8 +5,6 @@ from aiogram import Bot
 async def set_commands(bot: Bot):
     commands = [
         BotCommand(
-            command='create_event',
-            description='Создать напоминание'
         )]
-
+    await bot.delete_my_commands()
     await bot.set_my_commands(commands, BotCommandScopeAllPrivateChats())

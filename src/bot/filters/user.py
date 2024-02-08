@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.filters import BaseFilter
 from aiogram.types import TelegramObject, ChatMember
 
-from src.db.requests import user_in_group
+from src.db.requests import is_user_in_group
 
 
 class UserInGroup(BaseFilter):
@@ -14,7 +14,7 @@ class UserInGroup(BaseFilter):
             user_id = obj.new_chat_member.user.id
         else:
             user_id = obj.from_user.id
-        return await user_in_group(session, str(user_id))
+        return await is_user_in_group(session, str(user_id))
 
 
 class UserNotInGroup(BaseFilter):
@@ -26,4 +26,4 @@ class UserNotInGroup(BaseFilter):
             user_id = obj.new_chat_member.user.id
         else:
             user_id = obj.from_user.id
-        return not await user_in_group(session, str(user_id))
+        return not await is_user_in_group(session, str(user_id))

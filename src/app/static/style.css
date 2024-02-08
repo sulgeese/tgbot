@@ -1,0 +1,35 @@
+body {
+  background: #181818;
+  font-family: system-ui;
+  font-size: large;
+}
+
+
+.time {
+  font-size: xx-large;
+  color: #4dbce9;
+  font-weight: 500;
+}
+
+.date {
+  color: #aaa;
+  font-size: 0.9em;
+}
+
+.text {
+  color: white;
+  margin-top: 6px;
+  white-space: pre;
+}
+
+ul {
+  padding: 0;
+  margin: 0;
+}
+
+li {
+  background: #222;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}

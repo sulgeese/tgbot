@@ -12,11 +12,12 @@ def entities_to_str(entities: list) -> str:
     return json.dumps(lst)
 
 
-def str_to_entities(string: str) -> list[MessageEntity] | None:
+def str_to_entities(string: str, offset: int) -> list[MessageEntity] | None:
     if string == 'null':
         return None
     entities = []
     lst = json.loads(string)
     for kwargs in lst:
+        kwargs["offset"] = kwargs.get("offset", 0) + offset
         entities.append(MessageEntity(**kwargs))
     return entities

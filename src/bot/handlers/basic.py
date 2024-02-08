@@ -8,7 +8,7 @@ from src.settings import settings
 
 
 async def on_startup(bot: Bot):
-    await set_commands(bot)
+    # await set_commands(bot)
     await bot.send_message(chat_id=settings.bots.admin_id,
                            text=f'Бот запущен <b>{datetime_to_str(datetime.now())}</b>',
                            parse_mode='HTML')

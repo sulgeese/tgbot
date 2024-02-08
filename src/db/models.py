@@ -1,5 +1,5 @@
 from sqlalchemy.orm import mapped_column, relationship, Mapped
-from sqlalchemy import ForeignKey, BigInteger, DateTime, Integer, String, Text
+from sqlalchemy import ForeignKey, BigInteger, DateTime, Integer, String, Text, Boolean
 
 from datetime import datetime
 from typing import Optional
@@ -14,6 +14,7 @@ class GroupUsersModel(Base):
     username: Mapped[Optional[str]] = mapped_column(String(32))
     first_name: Mapped[Optional[str]] = mapped_column(String(64))
     last_name: Mapped[Optional[str]] = mapped_column(String(64))
+    in_group: Mapped[Boolean] = mapped_column(Boolean, default=True)
     events: Mapped[list["EventsModel"]] = relationship(back_populates='group_users')
 
 
