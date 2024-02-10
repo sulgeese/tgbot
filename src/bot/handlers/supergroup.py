@@ -21,7 +21,8 @@ async def supergroup_message_handler(message: Message, session: AsyncSession):
         first_name=message.new_chat_member.user.first_name,
         last_name=message.new_chat_member.user.last_name,
     )
-    await redis.delete('users')
+    if await redis.exists("users"):
+        await redis.delete("users")
 
 
 @sgr_router.chat_member(ChatMemberUpdatedFilter(member_status_changed=LEAVE_TRANSITION))
@@ -30,8 +31,10 @@ async def supergroup_message_handler(message: Message, session: AsyncSession):
         session=session,
         user_id=message.old_chat_member.user.id,
     )
-    await redis.delete('users')
+    if await redis.exists("users"):
+        await redis.delete("users")
 
 
-# @sgr_router.message()
-# async def supergroup_message_handler(message: Message):
+@sgr_router.message()
+async def supergroup_message_handler(message: Message):
+    await message.answer(text="<code>dfsaaaaaaaaaaaadfsdfs</code>", parse_mode="HTML")

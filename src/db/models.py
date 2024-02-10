@@ -22,7 +22,9 @@ class EventsModel(Base):
     __tablename__ = 'events'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(Text)
     date: Mapped[datetime] = mapped_column(DateTime)
     text: Mapped[str] = mapped_column(Text)
     user_id: Mapped[int] = mapped_column(ForeignKey(column='group_users.user_id'))
+    mentions: Mapped[str] = mapped_column(Text)
     group_users: Mapped["GroupUsersModel"] = relationship(back_populates='events')

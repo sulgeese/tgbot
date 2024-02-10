@@ -11,8 +11,8 @@ from hypercorn.config import Config
 
 from src.app.middlewares.db import create_db_middleware
 from src.app.routers.webapp import router
-from bot.handlers.privateall import pr_all_router
-from bot.handlers.privatemembers import pr_members_router
+from bot.handlers.private_all import pr_all_router
+from bot.handlers.private_members import pr_members_router
 from bot.handlers.supergroup import sgr_router
 from bot.middleware.db import DbSessionMiddleware
 from bot.middleware.users import GroupMiddleware
@@ -53,19 +53,17 @@ async def start():
     logging.getLogger("hypercorn").setLevel(logging.DEBUG)
 
     dp = Dispatcher(scheduler=scheduler, storage=RedisStorage(redis=redis))
-    # dp.startup.register(on_startup)
-    # dp.shutdown.register(end_message)
     dp.update.middleware(GroupMiddleware())
     dp.update.middleware(DbSessionMiddleware(session_maker))
     dp.include_router(pr_members_router)
     dp.include_router(pr_all_router)
     dp.include_router(sgr_router)
-    await bot.delete_my_commands()
 
     async def start_bot():
         try:
             await bot.delete_webhook(drop_pending_updates=True)
             await dp.start_polling(bot)
+            await bot.delete_my_commands()
         finally:
             await bot.session.close()
 
