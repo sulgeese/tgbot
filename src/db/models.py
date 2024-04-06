@@ -1,10 +1,10 @@
-from sqlalchemy.orm import mapped_column, relationship, Mapped
-from sqlalchemy import ForeignKey, BigInteger, DateTime, Integer, String, Text, Boolean
-
 from datetime import datetime
 from typing import Optional
 
-from src.db.base import *
+from sqlalchemy.orm import mapped_column, relationship, Mapped
+from sqlalchemy import ForeignKey, BigInteger, DateTime, Integer, String, Text, Boolean
+
+from db.base import *
 
 
 class GroupUsersModel(Base):

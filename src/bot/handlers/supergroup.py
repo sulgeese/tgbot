@@ -1,10 +1,10 @@
 from aiogram import Router, F
-from aiogram.filters.chat_member_updated import ChatMemberUpdatedFilter, JOIN_TRANSITION, LEAVE_TRANSITION
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
+from aiogram.filters.chat_member_updated import ChatMemberUpdatedFilter, JOIN_TRANSITION, LEAVE_TRANSITION
 
-from src.db.redis import redis
-from src.db.requests import insert_user_into_group, del_user_from_group
+from db.redis import redis
+from db.requests import insert_user_into_group, del_user_from_group
 
 sgr_router = Router()
 sgr_router.message.filter(F.chat.type == "supergroup")
@@ -33,8 +33,3 @@ async def supergroup_message_handler(message: Message, session: AsyncSession):
     )
     if await redis.exists("users"):
         await redis.delete("users")
-
-
-@sgr_router.message()
-async def supergroup_message_handler(message: Message):
-    await message.answer(text="<code>dfsaaaaaaaaaaaadfsdfs</code>", parse_mode="HTML")

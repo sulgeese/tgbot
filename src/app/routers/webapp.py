@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from src.db.requests import select_current_events
+from db.requests import select_current_events
 
 router = APIRouter(prefix="")
 templates = Jinja2Templates(directory="src/app/templates")

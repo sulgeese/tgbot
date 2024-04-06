@@ -1,7 +1,7 @@
-from aiogram.types import Message
 from aiogram import Router, F
+from aiogram.types import Message
 
-from src.bot.filters.user import UserNotInGroup
+from bot.filters.user import UserNotInGroup
 
 
 pr_all_router = Router()

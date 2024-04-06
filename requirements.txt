@@ -48,8 +48,6 @@ email-validator==2.1.0.post1
     # via fastapi
 environs==9.5.0
     # via -r requirements.in
-fastapi[all]==0.108.0
-    # via -r requirements.in
 frozenlist==1.4.0
     # via
     #   aiohttp

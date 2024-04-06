@@ -45,16 +45,20 @@ events = InlineKeyboardMarkup(
 
 # Пиздец....
 # Хуйпойми
-def get_users_keyboard(users: List):
-    users.append(("👥 Всех", " @".join(map(lambda user: user[1], users))))
+def get_users_keyboard(users: List, dont_show: str = None) -> InlineKeyboardMarkup:
+    users.append(("👥 Всех", " @".join(map(lambda _user: _user[1], users))))
     data, row = [], []
     for i, user in enumerate(users):
+        if dont_show:
+            if user[1] in dont_show:
+                continue
         row.append(InlineKeyboardButton(text=user[0], callback_data=f"@{user[1]}"))
         if i % 3 == 2:
             data.append(row)
             row = []
     if row: data.append(row)
-    data.append([InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"confirm_mentions")])
+    data.append([InlineKeyboardButton(text="✅ Сохранить", callback_data=f"confirm_mentions"),
+                 InlineKeyboardButton(text="🔄 Сбросить", callback_data=f"cancel_mentions")])
     keyboard = InlineKeyboardMarkup(inline_keyboard=data)
     return keyboard
 
@@ -62,7 +66,8 @@ def get_users_keyboard(users: List):
 def get_events_keyboard(_events: List):
     data, row = [], []
     for i, event in enumerate(_events, 0):
-        row.append(InlineKeyboardButton(text=event.title, callback_data=f"${event.id}",))
+        event_id, title = event.get("event_id"), event.get("title")
+        row.append(InlineKeyboardButton(text=title, callback_data=f"${event_id}", ))
         if i % 3 == 2:
             data.append(row)
             row = []
@@ -83,16 +88,6 @@ cancel_event = InlineKeyboardMarkup(
     ]
 )
 
-back = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [
-            InlineKeyboardButton(
-                text="⬅️ Назад",
-                callback_data="back"
-            )
-        ]
-    ]
-)
 
 edit_events = InlineKeyboardMarkup(
     inline_keyboard=[
@@ -116,10 +111,14 @@ edit_events = InlineKeyboardMarkup(
                 callback_data="edit_mentions"
             ),
         ],
-[
+        [
             InlineKeyboardButton(
-                text="✅ Подтвердить",
+                text="✅ Сохранить",
                 callback_data="edit_confirm"
+            ),
+            InlineKeyboardButton(
+                text="⬅️ Назад",
+                callback_data="edit_cancel"
             ),
         ]
     ]

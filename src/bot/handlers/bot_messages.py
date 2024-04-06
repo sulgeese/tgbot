@@ -8,23 +8,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboard import inline
 from bot.states import StepsForm
-from db.requests import select_current_users_events, insert_event, get_event_id
+from db import requests
+from db.redis import redis
 from settings import settings
 from utils import str_to_datetime
 
 
 async def send_message(bot: Bot, title: str, text: str, mentions: str) -> None:
     await bot.send_message(chat_id=settings.bots.supergroup_id,
-                           text=f"""<i><b>{title}</b></i>
-                           {text}
-                           {mentions}""",
+                           text=f"""<i><b>{title.strip()}</b></i>
+                           {text.strip()}
+                           {mentions.strip()}""",
                            message_thread_id=settings.bots.theme_id,
                            parse_mode="HTML",
                            )
+    if await redis.exists("events"):
+        await redis.delete("events")
 
 
 async def send_events_list(call: CallbackQuery, session: AsyncSession):
-    data = await select_current_users_events(session=session, user_id=call.from_user.id)
+    data = await requests.select_current_users_events(session=session, user_id=call.from_user.id)
     await call.message.edit_text(
         text="<b>Уведомления</b>",
         parse_mode="HTML",
@@ -41,34 +44,43 @@ async def send_edit_event_message(message: Message, state: FSMContext) -> None:
     await state.set_state(StepsForm.EDIT_EVENTS)
 
 
-async def send_start_menu(message: Message, state: FSMContext) -> None:
+async def send_start_menu(call: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
-    await message.delete()
-    await message.answer(
+    await call.message.edit_text(
         text='<b>Что хотите сделать?</b>',
         reply_markup=inline.events,
         parse_mode="HTML"
     )
 
 
-# async def add_event(call: CallbackQuery, state: FSMContext, session: AsyncSession, scheduler: AsyncIOScheduler):
-#     data = await state.get_data()
-#     title, date, text, mentions = (data.get("title", None), str_to_datetime(data.get("date", None)),
-#                                    data.get("text", None), data.get("mentions", None))
-#     await insert_event(
-#         session=session,
-#         title=title,
-#         date=date,
-#         text=text,
-#         mentions=mentions,
-#         user_id=call.from_user.id,
-#     )
-#     event_id = await get_event_id(session=session, title=title)
-#     scheduler.add_job(
-#         id=str(event_id),
-#         func=send_message,
-#         trigger="date",
-#         run_date=max(date, datetime.now() + timedelta(seconds=10)),
-#         kwargs={"title": title, "text": text, "mentions": mentions}
-#     )
-#     await state.clear()
+async def add_event(call: CallbackQuery, state: FSMContext, session: AsyncSession, scheduler: AsyncIOScheduler):
+    data = await state.get_data()
+    title, date, text, mentions, event_id = (data.get("title"), str_to_datetime(data.get("date")), data.get("text"),
+                                             data.get("mentions"), data.get("event_id", None))
+    if not event_id:
+        await requests.insert_event(
+            session=session,
+            title=title,
+            date=date,
+            text=text,
+            mentions=mentions,
+            user_id=call.from_user.id,
+        )
+        event_id = await requests.get_event_id(session=session, title=title)
+    else:
+        await requests.edit_event(
+            session=session,
+            title=title,
+            date=date,
+            text=text,
+            mentions=mentions,
+            event_id=int(event_id),
+            scheduler=scheduler
+        )
+    scheduler.add_job(
+        id=str(event_id),
+        func=send_message,
+        trigger="date",
+        run_date=max(date, datetime.now() + timedelta(seconds=10)),
+        kwargs={"title": title, "text": text, "mentions": mentions}
+    )
