@@ -12,7 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import GroupUsersModel, EventsModel
-from db.redis import redis
+from db.redis_instance import redis
 from utils import datetime_to_str, str_to_datetime
 
 

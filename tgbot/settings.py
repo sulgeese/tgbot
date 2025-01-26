@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from environs import Env
 
@@ -68,4 +69,11 @@ def get_settings(path: str):
     )
 
 
-settings = get_settings('.env')
+logger = logging.getLogger(__name__)
+
+try:
+    settings = get_settings('.env')
+    logger.info(".env file loaded successfully")
+except Exception as e:
+    logger.error(f"Could not load .env file: {e}")
+    exit(1)

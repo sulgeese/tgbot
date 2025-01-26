@@ -9,9 +9,11 @@ class DateNotPassed(BaseFilter):
         pass
 
     async def __call__(self, message: Message) -> bool:
-        if datetime.now() < datetime.strptime(message.text, "%d.%m.%Y %H:%M"):
-            return True
-        return False
+        try:
+            msg_date = datetime.strptime(message.text, "%d.%m.%Y %H:%M")
+            return datetime.now() < msg_date
+        except ValueError:
+            return False
 
 
 class DateFilter(BaseFilter):
@@ -22,5 +24,5 @@ class DateFilter(BaseFilter):
         try:
             datetime.strptime(message.text, "%d.%m.%Y %H:%M")
             return True
-        except Exception as e:
+        except ValueError:
             return False

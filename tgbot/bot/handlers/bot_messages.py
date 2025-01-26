@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.keyboard import inline
 from bot.states import StepsForm
 from db import requests
-from db.redis import redis
+from db.redis_instance import redis
 from settings import settings
 from utils import str_to_datetime
 

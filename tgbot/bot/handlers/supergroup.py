@@ -4,16 +4,16 @@ from aiogram.filters import ChatMemberUpdatedFilter, IS_MEMBER, IS_NOT_MEMBER
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.redis import redis
+from db.redis_instance import redis
 from db.requests import update_user_status, update_user_status
 
-sgr_router = Router()
-sgr_router.message.filter(F.chat.type == "supergroup")
-sgr_router.chat_member.filter(F.chat.type == "supergroup")
-sgr_router.callback_query.filter(F.chat.type == "supergroup")
+router = Router()
+router.message.filter(F.chat.type == "supergroup")
+router.chat_member.filter(F.chat.type == "supergroup")
+router.callback_query.filter(F.chat.type == "supergroup")
 
 
-@sgr_router.chat_member(ChatMemberUpdatedFilter(IS_NOT_MEMBER >> IS_MEMBER))
+@router.chat_member(ChatMemberUpdatedFilter(IS_NOT_MEMBER >> IS_MEMBER))
 async def supergroup_user_join_handler(event: ChatMemberUpdated, session: AsyncSession):
     await update_user_status(
         session=session,
@@ -27,7 +27,7 @@ async def supergroup_user_join_handler(event: ChatMemberUpdated, session: AsyncS
         await redis.delete("users")
 
 
-@sgr_router.chat_member(ChatMemberUpdatedFilter(IS_MEMBER >> IS_NOT_MEMBER))
+@router.chat_member(ChatMemberUpdatedFilter(IS_MEMBER >> IS_NOT_MEMBER))
 async def supergroup_user_leave_handler(event: ChatMemberUpdated, session: AsyncSession):
     await update_user_status(
         session=session,
