@@ -82,23 +82,12 @@ def get_events_keyboard(event_list: List) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=keyboard_rows)
 
 
-cancel_event = InlineKeyboardMarkup(
+event_search_back = InlineKeyboardMarkup(
     inline_keyboard=[
         [
             InlineKeyboardButton(
                 text="⬅️ Назад",
                 callback_data="cancel_event"
-            )
-        ]
-    ]
-)
-
-back = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [
-            InlineKeyboardButton(
-                text="⬅️ Назад",
-                callback_data="back"
             )
         ]
     ]

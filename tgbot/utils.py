@@ -1,13 +1,22 @@
+import logging
+
 from datetime import datetime
 
+logger = logging.getLogger(__name__)
 
-def datetime_to_str(date: datetime | None) -> str | None:
-    if not date:
+DATETIME_FORMAT = "%d.%m.%Y %H:%M"
+
+
+def format_datetime(date: datetime | None) -> str | None:
+    if date is None:
         return None
-    return date.strftime("%d.%m.%Y %H:%M")
+    try:
+        return date.strftime(DATETIME_FORMAT) if date else None
+    except AttributeError as err:
+        logger.warning("Failed to convert datetime to str: %s", err)
 
-
-def str_to_datetime(date: str) -> datetime | None:
-    if not date:
-        return None
-    return datetime.strptime(date, "%d.%m.%Y %H:%M")
+def parse_datetime(date_string: str) -> datetime | None:
+    try:
+        return datetime.strptime(date_string, DATETIME_FORMAT)
+    except ValueError as err:
+        logger.warning("Failed to convert str to datetime: %s", err)

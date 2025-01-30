@@ -11,7 +11,7 @@ from bot.states import StepsForm
 from db import requests
 from db.redis_instance import redis
 from settings import settings
-from utils import str_to_datetime
+from utils import parse_datetime
 
 
 async def send_message(bot: Bot, title: str, text: str, mentions: str) -> None:
@@ -55,10 +55,10 @@ async def send_start_menu(call: CallbackQuery, state: FSMContext) -> None:
 
 async def update_event(call: CallbackQuery, state: FSMContext, session: AsyncSession, scheduler: AsyncIOScheduler):
     data = await state.get_data()
-    title, date, text, mentions, event_id = (data.get("title"), str_to_datetime(data.get("date")), data.get("text"),
+    title, date, text, mentions, event_id = (data.get("title"), parse_datetime(data.get("date")), data.get("text"),
                                              data.get("mentions"), data.get("event_id"))
     if event_id is None:
-        await requests.insert_event(
+        event_id = await requests.insert_event_to_db(
             session=session,
             title=title,
             date=date,
@@ -66,7 +66,6 @@ async def update_event(call: CallbackQuery, state: FSMContext, session: AsyncSes
             mentions=mentions,
             user_id=call.from_user.id,
         )
-        event_id = await requests.get_event_id(session=session, title=title)
     else:
         await requests.edit_event(
             session=session,

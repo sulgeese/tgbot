@@ -2,3 +2,4 @@ pyrightconfig.json
 .env
 .git/
 **/__pycache__/
+.idea/

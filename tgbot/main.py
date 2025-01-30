@@ -4,11 +4,10 @@ import time
 import os
 
 from aiogram import Dispatcher, Bot
+from aiogram.fsm.storage.memory import SimpleEventIsolation
 from aiogram.fsm.storage.redis import RedisStorage
 
-from bot.handlers.private_not_member import router as private_not_member_router
-from bot.handlers.private_member import router as private_member_router
-from bot.handlers.supergroup import router as supergroup_router
+from bot.handlers.event_actions.private_member2 import router as private_member2_router
 from bot.middleware.add_db import DbSessionMiddleware
 from bot.middleware.check_chat_type import GroupMiddleware
 
@@ -23,25 +22,37 @@ async def start():
     os.environ["TZ"] = settings.other.timezone
     time.tzset()
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG,
         format='%(asctime)s - [%(levelname)s] - %(name)s - '
                '(%(filename)s).%(funcName)s(%(lineno)d) - %(message)s',
         datefmt='%d.%m.%Y %H:%M:%S',
     )
     logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
     logging.getLogger('apscheduler').setLevel(logging.DEBUG)
+    session_maker = await get_sessionmaker()
+    def create_dispatcher():
+        dispatcher = Dispatcher(
+            events_isolation=SimpleEventIsolation(),
+            scheduler=scheduler,
+            storage=RedisStorage(redis=redis),
+        )
+        dispatcher.update.middleware(GroupMiddleware())
+        dispatcher.update.middleware(DbSessionMiddleware(session_maker))
+        # dispatcher.include_router(supergroup_router)
+        dispatcher.include_router(private_member2_router)
+        # dispatcher.include_router(private_not_member_router)
+
+
+        return dispatcher
+
     bot = Bot(token=settings.bots.token)
 
     scheduler = await start_scheduler(bot)
-    session_maker = await get_sessionmaker()
 
-    dp = Dispatcher(scheduler=scheduler, storage=RedisStorage(redis=redis))
-    dp.update.middleware(GroupMiddleware())
-    dp.update.middleware(DbSessionMiddleware(session_maker))
-    dp.include_router(supergroup_router)
-    dp.include_router(private_member_router)
-    dp.include_router(private_not_member_router)
 
+
+
+    dp = create_dispatcher()
     async def start_bot() -> None:
         try:
             await bot.delete_webhook(drop_pending_updates=True)
@@ -55,5 +66,5 @@ async def start():
     await bot_task
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(start())

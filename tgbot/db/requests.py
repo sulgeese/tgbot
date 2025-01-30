@@ -7,13 +7,13 @@ from typing import AnyStr, List, Optional, Tuple
 from apscheduler.jobstores.base import JobLookupError
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from sqlalchemy import select, asc, desc
+from sqlalchemy import select, asc
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import GroupUsersModel, EventsModel
 from db.redis_instance import redis
-from utils import datetime_to_str, str_to_datetime
+from utils import format_datetime, parse_datetime
 
 
 USERS_KEY = "users"
@@ -39,7 +39,7 @@ def serialize_user(user: GroupUsersModel) -> dict:
 def serialize_event(event: EventsModel) -> dict:
     return {
         "title": event.title,
-        "date": datetime_to_str(event.date),
+        "date": format_datetime(event.date),
         "text": event.text,
         "mentions": event.mentions,
         "user_id": event.user_id,
@@ -135,21 +135,24 @@ async def edit_event(
         await redis.delete(EVENTS_KEY)
 
 
-async def insert_event(
+async def insert_event_to_db(
         session: AsyncSession,
         title: str,
         date: datetime,
         text: str,
         user_id: int,
         mentions: str
-) -> None:
+) -> int:
     event = EventsModel()
     event.title, event.date, event.text, event.mentions, event.user_id = title, date, text, mentions, user_id
     await session.merge(event)
+    await session.flush()
+    event_id = event.id
     with suppress(IntegrityError):
         await session.commit()
     if await redis.exists(EVENTS_KEY):
         await redis.delete(EVENTS_KEY)
+    return event_id
 
 
 
@@ -157,7 +160,7 @@ async def select_current_events(session: AsyncSession) -> [[datetime, AnyStr]]:
     if await cache_events_in_redis(session):
         events = await redis.hvals(EVENTS_KEY)
         return [
-            (str_to_datetime(event["date"]), event["text"])
+            (parse_datetime(event["date"]), event["text"])
             for event in (json.loads(e) for e in events)
         ]
 
@@ -187,12 +190,3 @@ async def select_event(session: AsyncSession, event_id: int):
                 "mentions": event.get("mentions")
                 }
         return data
-
-
-async def get_event_id(session: AsyncSession, title: str):
-    event_id = await session.execute(
-        select(EventsModel.id)
-        .filter(EventsModel.title == title)
-        .order_by(desc(EventsModel.id))
-    )
-    return event_id.scalars().one()
