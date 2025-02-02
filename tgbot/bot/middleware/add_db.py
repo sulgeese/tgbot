@@ -16,6 +16,5 @@ class DbSessionMiddleware(BaseMiddleware):
             data: Dict[str, Any],
     ) -> Any:
         async with self.session_maker() as session:
-            print("сессия открыта")
             data["session"] = session
             return await handler(event, data)

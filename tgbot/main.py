@@ -7,9 +7,9 @@ from aiogram import Dispatcher, Bot
 from aiogram.fsm.storage.memory import SimpleEventIsolation
 from aiogram.fsm.storage.redis import RedisStorage
 
-from bot.handlers.event_actions.private_member2 import router as private_member2_router
-from bot.middleware.add_db import DbSessionMiddleware
-from bot.middleware.check_chat_type import GroupMiddleware
+from bot.handlers import private_member_router, supergroup_router, private_not_member_router
+from bot.middleware import DbSessionMiddleware
+from bot.middleware import GroupMiddleware
 
 from db.scheduler import start_scheduler
 from db.engine import get_sessionmaker
@@ -29,34 +29,25 @@ async def start():
     )
     logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
     logging.getLogger('apscheduler').setLevel(logging.DEBUG)
-    session_maker = await get_sessionmaker()
-    def create_dispatcher():
-        dispatcher = Dispatcher(
-            events_isolation=SimpleEventIsolation(),
-            scheduler=scheduler,
-            storage=RedisStorage(redis=redis),
-        )
-        dispatcher.update.middleware(GroupMiddleware())
-        dispatcher.update.middleware(DbSessionMiddleware(session_maker))
-        # dispatcher.include_router(supergroup_router)
-        dispatcher.include_router(private_member2_router)
-        # dispatcher.include_router(private_not_member_router)
-
-
-        return dispatcher
 
     bot = Bot(token=settings.bots.token)
-
+    session_maker = await get_sessionmaker()
     scheduler = await start_scheduler(bot)
+    dispatcher = Dispatcher(
+        events_isolation=SimpleEventIsolation(),
+        scheduler=scheduler,
+        storage=RedisStorage(redis=redis),
+    )
+    dispatcher.update.middleware(GroupMiddleware())
+    dispatcher.update.middleware(DbSessionMiddleware(session_maker))
+    # dispatcher.include_router(supergroup_router)
+    dispatcher.include_router(private_member_router)
+    # dispatcher.include_router(private_not_member_router)
 
-
-
-
-    dp = create_dispatcher()
     async def start_bot() -> None:
         try:
             await bot.delete_webhook(drop_pending_updates=True)
-            await dp.start_polling(bot)
+            await dispatcher.start_polling(bot)
         finally:
             await redis.close()
             await bot.session.close()

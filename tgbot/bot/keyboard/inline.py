@@ -1,23 +1,27 @@
-from typing import List
+from typing import List, Tuple
 
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
+from db.models import EventsModel, UsersModel
+from .utils import get_users_for_keyboard
+
 
 confirm = InlineKeyboardMarkup(
     inline_keyboard=[
         [
             InlineKeyboardButton(
                 text='Да',
-                callback_data='confirm_creation'
+                callback_data="confirm"
             ),
             InlineKeyboardButton(
                 text='Нет',
-                callback_data='cancel_creation'
+                callback_data="cancel"
             )
         ]
     ]
 )
 
-events = InlineKeyboardMarkup(
+event_interactions = InlineKeyboardMarkup(
     inline_keyboard=[
         [
             InlineKeyboardButton(
@@ -38,57 +42,6 @@ events = InlineKeyboardMarkup(
                 text="🔍 Посмотреть",
                 callback_data="search_events"
             ),
-        ]
-    ]
-)
-
-
-# Пиздец....
-# Хуйпойми
-def get_users_keyboard(user_list: List, dont_show: str = None) -> InlineKeyboardMarkup:
-    user_list.append(("👥 Всех", " @".join(map(lambda _user: _user[1], user_list))))
-    keyboard_rows, current_row = [], []
-    if user_list:
-        for i, user in enumerate(user_list):
-            if dont_show and user[1] in dont_show:
-                continue
-            current_row.append(InlineKeyboardButton(text=user[0], callback_data=f"@{user[1]}"))
-            if i % 3 == 2:
-                keyboard_rows.append(current_row)
-                current_row = []
-        if current_row:
-            keyboard_rows.append(current_row)
-    keyboard_rows.append([
-        InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"confirm_mentions"),
-        InlineKeyboardButton(text="🔄 Сбросить", callback_data=f"cancel_mentions")]
-    )
-    return InlineKeyboardMarkup(inline_keyboard=keyboard_rows)
-
-
-def get_events_keyboard(event_list: List) -> InlineKeyboardMarkup:
-    keyboard_rows, current_row = [], []
-    if event_list:
-        for i, event in enumerate(event_list):
-            current_row.append(InlineKeyboardButton(
-                text=event.get("title"),
-                callback_data=f"${event.get("event_id")}"
-            ))
-            if i % 3 == 2:
-                keyboard_rows.append(current_row)
-                current_row = []
-        if current_row:
-            keyboard_rows.append(current_row)
-    keyboard_rows.append([InlineKeyboardButton(text="⬅️ Назад", callback_data="back")])
-    return InlineKeyboardMarkup(inline_keyboard=keyboard_rows)
-
-
-event_search_back = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [
-            InlineKeyboardButton(
-                text="⬅️ Назад",
-                callback_data="cancel_event"
-            )
         ]
     ]
 )
@@ -117,9 +70,64 @@ edit_events = InlineKeyboardMarkup(
         ],
 [
             InlineKeyboardButton(
-                text="✅ Подтвердить",
-                callback_data="edit_confirm"
+                text="✅ Сохранить",
+                callback_data="confirm"
+            ),
+            InlineKeyboardButton(
+                text="❌ Отмена",
+                callback_data="cancel"
             ),
         ]
     ]
 )
+
+event_back = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text="⬅️ Назад",
+                callback_data="event_search_back",
+            )
+        ]
+    ]
+)
+
+
+def get_users_keyboard(users: List[UsersModel], ignore_username_list: List[str] = ()) -> InlineKeyboardMarkup:
+    user_list = get_users_for_keyboard(users)
+    if len(user_list) != len(ignore_username_list):
+        user_list.append(("👥 Всех", "all"))
+    keyboard_rows, current_row = [], []
+    keyboard_width = 3
+    for name, username in map(lambda x: (x[0], f"@{x[1]}"), user_list):
+        if ignore_username_list and username in ignore_username_list:
+            continue
+        current_row.append(InlineKeyboardButton(text=name, callback_data=username))
+        if len(current_row) == keyboard_width:
+            keyboard_rows.append(current_row)
+            current_row = []
+    if current_row:
+        keyboard_rows.append(current_row)
+    keyboard_rows.append([
+        InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"confirm_mentions"),
+        InlineKeyboardButton(text="🔄 Сбросить", callback_data=f"cancel_mentions")]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=keyboard_rows)
+
+
+def get_events_keyboard(events: List[EventsModel]) -> InlineKeyboardMarkup:
+    keyboard_rows, current_row = [], []
+    keyboard_width = 3
+    if events:
+        for event in events:
+            current_row.append(InlineKeyboardButton(
+                text=event.title,
+                callback_data=f"${event.id}"
+            ))
+            if len(current_row) == keyboard_width:
+                keyboard_rows.append(current_row)
+                current_row = []
+        if current_row:
+            keyboard_rows.append(current_row)
+    keyboard_rows.append([InlineKeyboardButton(text="⬅️ Назад", callback_data="back")])
+    return InlineKeyboardMarkup(inline_keyboard=keyboard_rows)

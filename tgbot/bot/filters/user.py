@@ -2,7 +2,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.filters import BaseFilter
 from aiogram.types import TelegramObject, ChatMember
 
-from db.requests import check_user_existence
+from db.redis_instance import redis
+from db.repositories.user import UserRepository
 
 
 class UserInGroup(BaseFilter):
@@ -14,4 +15,4 @@ class UserInGroup(BaseFilter):
             user_id = obj.new_chat_member.user.id
         else:
             user_id = obj.from_user.id
-        return await check_user_existence(session, str(user_id))
+        return (await UserRepository(session, redis).get(user_id)).in_group
