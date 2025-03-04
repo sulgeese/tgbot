@@ -1,9 +1,9 @@
-from typing import List, Tuple
+from typing import List, Optional, Union
 
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+from bot.keyboard.utils import get_users_for_keyboard
 from db.models import EventsModel, UsersModel
-from .utils import get_users_for_keyboard
 
 
 confirm = InlineKeyboardMarkup(
@@ -93,21 +93,22 @@ event_back = InlineKeyboardMarkup(
 )
 
 
-def get_users_keyboard(users: List[UsersModel], ignore_username_list: List[str] = ()) -> InlineKeyboardMarkup:
-    user_list = get_users_for_keyboard(users)
-    if len(user_list) != len(ignore_username_list):
-        user_list.append(("👥 Всех", "all"))
+def get_users_keyboard(users: Optional[List[UsersModel]], ignore_username_list: Union[List[str]] = ()) -> InlineKeyboardMarkup:  # type: ignore
     keyboard_rows, current_row = [], []
-    keyboard_width = 3
-    for name, username in map(lambda x: (x[0], f"@{x[1]}"), user_list):
-        if ignore_username_list and username in ignore_username_list:
-            continue
-        current_row.append(InlineKeyboardButton(text=name, callback_data=username))
-        if len(current_row) == keyboard_width:
+    if users:
+        user_list = get_users_for_keyboard(users)
+        if len(user_list) != len(ignore_username_list):
+            user_list.append(("👥 Всех", "all"))
+        keyboard_width = 3
+        for name, username in map(lambda x: (x[0], f"@{x[1]}"), user_list):
+            if ignore_username_list and username in ignore_username_list:
+                continue
+            current_row.append(InlineKeyboardButton(text=name, callback_data=username))
+            if len(current_row) == keyboard_width:
+                keyboard_rows.append(current_row)
+                current_row = []
+        if current_row:
             keyboard_rows.append(current_row)
-            current_row = []
-    if current_row:
-        keyboard_rows.append(current_row)
     keyboard_rows.append([
         InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"confirm_mentions"),
         InlineKeyboardButton(text="🔄 Сбросить", callback_data=f"cancel_mentions")]

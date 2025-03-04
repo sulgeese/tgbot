@@ -1,61 +1,73 @@
 import logging
-import uuid
-from typing import Optional, List, cast, Tuple
-from datetime import datetime
+from uuid import UUID
+from typing import Optional, List
+from datetime import datetime, timedelta
 
-from pydantic import BaseModel, ConfigDict
-from sqlalchemy import select, asc
-from sqlalchemy.ext.asyncio import AsyncSession
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from redis.asyncio import Redis
+from sqlmodel import select, asc
+from sqlmodel.ext.asyncio.session import AsyncSession
 
-from settings import Redis
-from .base import BaseRepository
+from db.repo.base import BaseRepository
 from db.models import EventsModel
 
 
 logger = logging.getLogger(__name__)
 
 
-class Event(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+class EventRepository(BaseRepository[EventsModel]):
+    def __init__(self, db: AsyncSession, redis: Redis, scheduler: AsyncIOScheduler = None):
+        self.scheduler = scheduler
+        super().__init__(db, redis, EventsModel)
 
-    id: uuid.UUID
-    title: Optional[str] = None
-    date: Optional[datetime] = None
-    text: Optional[str] = None
-    user_id: Optional[int] = None
-    mentions: Optional[str] = None
+    async def create(self, event: EventsModel) -> Optional[EventsModel]:
+        result = await super().create(event)
+        if result:
+            await self._add_job(result)
+        return result
 
-
-class EventRepository(BaseRepository[EventsModel, Event]):
-    def __init__(self, db: AsyncSession, redis: Redis):
-        super().__init__(db, redis, EventsModel, Event)
-
-    async def create(self, data: Event) -> Optional[Event]:
-        return await super().create(data)
-
-    async def get(self, event_id: uuid.UUID) -> Optional[Event]:
+    async def get(self, event_id: UUID) -> Optional[EventsModel]:
         return await super().get(event_id)
 
-    async def update(self, data: Event) -> Optional[Event]:
-        return await super().update(data)
+    async def update(self, event: EventsModel) -> Optional[EventsModel]:
+        result = await super().update(event)
+        if result:
+            await self._remove_job(result.id)
+            await self._add_job(result)
+        return result
 
-    async def delete(self, event_id: uuid.UUID) -> Optional[Event]:
-        return await super().delete(event_id)
+
+    async def delete(self, event_id: UUID) -> None:
+        await self._remove_job(event_id)
+        await super().delete(event_id)
 
     async def get_events_by_user(self, user_id: int) -> Optional[List[EventsModel]]:
         try:
             query = (
                 select(EventsModel)
-                .filter(EventsModel.date >= datetime.today(), EventsModel.user_id == user_id)
+                .where(EventsModel.date >= datetime.today(), EventsModel.user_id == user_id)
                 .order_by(asc(EventsModel.date))
             )
-            results = await self.db.execute(query)
-            return results.scalars().all()
+            results = await self.db.exec(query)
+            return results.all()
         except Exception as err:
             logger.error(f"Cannot get events for user {user_id}: {err}")
 
-    # async def _cache_events_by_user(self, ):
-    #     try:
-    #
-    #     except Exception as err:
-    #         logger.error("Cannot cache events by user: %s", err)
+    async def _remove_job(self, event_id: UUID) -> None:
+        try:
+            self.scheduler.remove_job(str(event_id))
+        except Exception as err:
+            logger.warning(f"Couldn't remove job with id {event_id} due to error: {err}")
+
+    async def _add_job(self, event: EventsModel) -> None:
+        try:
+            from bot.handlers.utils import send_message
+            self.scheduler.add_job(
+                id=str(event.id),
+                func=send_message,
+                trigger="date",
+                run_date=max(event.date, datetime.now() + timedelta(seconds=10)),
+                kwargs={"title": event.title, "text": event.text, "mentions": event.mentions}
+            )
+        except Exception as err:
+            logger.error("Couldn't add job to scheduler due to error: %s", err)

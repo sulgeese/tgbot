@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.keyboard import inline
 from bot.states import StepsForm
 from db.redis_instance import redis
-from db.repositories.event import EventRepository, Event
+from db.repositories.event import EventRepository
 from settings import settings
 from utils import parse_datetime
 
@@ -56,12 +56,13 @@ async def update_event(call: CallbackQuery, state: FSMContext, session: AsyncSes
     data = await state.get_data()
     data["date"] = parse_datetime(data.get("date"))
     data["user_id"] = call.from_user.id
+    print(data)
     if data.get("id"):
-        event = await EventRepository(session, redis).update(Event(**data))
+        event = await EventRepository(session, redis).update(**data)
         scheduler.remove_job(str(event.id))
     else:
         data["id"] = uuid.uuid4()
-        event = await EventRepository(session, redis).create(Event(**data))
+        event = await EventRepository(session, redis).create(**data)
 
     scheduler.add_job(
         id=str(event.id),

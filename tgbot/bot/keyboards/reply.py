@@ -1,4 +1,4 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 
 start = ReplyKeyboardMarkup(
