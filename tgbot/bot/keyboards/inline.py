@@ -2,7 +2,7 @@ from typing import List, Optional, Union
 
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from bot.keyboard.utils import get_users_for_keyboard
+from bot.keyboards.utils import get_users_for_keyboard
 from db.models import EventsModel, UsersModel
 
 
@@ -116,7 +116,7 @@ def get_users_keyboard(users: Optional[List[UsersModel]], ignore_username_list: 
     return InlineKeyboardMarkup(inline_keyboard=keyboard_rows)
 
 
-def get_events_keyboard(events: List[EventsModel]) -> InlineKeyboardMarkup:
+def get_events_keyboard(events: Optional[List[EventsModel]]) -> InlineKeyboardMarkup:
     keyboard_rows, current_row = [], []
     keyboard_width = 3
     if events:

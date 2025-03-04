@@ -1,26 +1,31 @@
+import uuid
 from datetime import datetime
 from typing import Any
 
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
-from sqlalchemy.ext.asyncio import AsyncSession
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from redis.asyncio import Redis
+from sqlmodel.ext.asyncio.session import AsyncSession
 
-from bot.keyboard import inline
+from bot.handlers.private_router.utils import get_date, get_title, get_text, get_mentions, handle_event_update
+from bot.keyboards import inline
 from bot.states import StepsForm
-from db.redis_instance import redis
-from db.repositories.user import UserRepository
-from utils import format_datetime
-from .utils import get_date, get_title, get_text, get_mentions, handle_event_update
+from bot.validate.callback_check import ensure_callback_message
+from db.repositories import EventRepository, UserRepository
+from db.models import EventsModel
+from bot.datetime_utils import format_datetime
 
 router = Router()
 
 
-# Entrypoint to start creating
+# Entrypoint to start creating event
 @router.callback_query(F.data == "create_events")
+@ensure_callback_message
 async def send_title_message(call: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
-    await call.message.edit_text(
+    await call.message.edit_text(  # type: ignore
         text='<b>Введите название</b>',
         parse_mode="HTML",
     )
@@ -28,7 +33,7 @@ async def send_title_message(call: CallbackQuery, state: FSMContext) -> None:
 
 
 # Gets title from user
-async def on_success_title(message: Message, state: FSMContext) -> Any:
+async def on_success_title(message: Message, state: FSMContext) -> None:
     await state.update_data(title=message.text)
     await message.answer(
         text="<b>Введите дату отправки уведомления</b>\n(Пример:  <b>{}</b>)"
@@ -42,20 +47,20 @@ router.message(StepsForm.GET_TITLE, F.text)(get_title(on_success=on_success_titl
 
 
 # Gets date from user
-async def on_success_date(message: Message, state: FSMContext):
+async def on_success_date(message: Message, state: FSMContext) -> None:
     await state.update_data(date=message.text)
     await message.answer(
         text='<b>Введите текст уведомления</b>',
         parse_mode="HTML",
     )
-    return await state.set_state(StepsForm.GET_TEXT)
+    await state.set_state(StepsForm.GET_TEXT)
 
 
 router.message(StepsForm.GET_DATE, F.text)(get_date(on_success_date))
 
 
 # Gets text from user
-async def on_success_text(message: Message, state: FSMContext, session: AsyncSession) -> Any:
+async def on_success_text(message: Message, state: FSMContext, session: AsyncSession, redis: Redis) -> None:
     await state.update_data(text=message.text, mentions="")
     users = await UserRepository(session, redis).get_users_in_group()
     await message.answer(
@@ -81,9 +86,10 @@ async def incorrect_message_type(message: Message) -> None:
 
 
 # Gets mentions from user
+@ensure_callback_message
 async def on_success_mention(call: CallbackQuery, state: FSMContext) -> Any:
     await state.set_state(StepsForm.WAITING_CONFIRM)
-    return await call.message.edit_text(
+    return await call.message.edit_text(  # type: ignore
         text='<b>Запланировать уведомление?</b>',
         parse_mode="HTML",
         reply_markup=inline.confirm,
@@ -94,15 +100,26 @@ router.callback_query(StepsForm.GET_MENTIONS)(get_mentions(on_success_mention))
 
 
 # Saves or doesn't save the event and sends start menu
-async def on_event_save_confirmation(call: CallbackQuery) -> Any:
-    await call.message.edit_text(
+@ensure_callback_message
+async def on_event_save_confirmation(
+        call: CallbackQuery,
+        session: AsyncSession,
+        state: FSMContext,
+        redis: Redis,
+        scheduler: AsyncIOScheduler,
+) -> Any:
+    data = await state.get_data()
+    event = EventsModel().model_validate({**data, "id": uuid.uuid4(), "user_id": call.from_user.id})
+    await EventRepository(session, redis, scheduler).create(event)
+    await call.message.edit_text(  # type: ignore
         text="<b>Событие добавлено ✅</b>",
         parse_mode="HTML",
     )
 
 
+@ensure_callback_message
 async def on_event_save_cancellation(call: CallbackQuery) -> Any:
-    await call.message.edit_text(
+    await call.message.edit_text(  # type: ignore
         text="<b>Действие отменено ❌</b>",
         parse_mode="HTML",
     )

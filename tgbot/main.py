@@ -7,10 +7,9 @@ from aiogram import Dispatcher, Bot
 from aiogram.fsm.storage.memory import SimpleEventIsolation
 from aiogram.fsm.storage.redis import RedisStorage
 
-from bot.handlers import private_member_router, supergroup_router, private_not_member_router
-from bot.middleware import DbSessionMiddleware
-from bot.middleware import GroupMiddleware
-
+from bot.handlers import private_member_router, supergroup_router, private_not_member_router  # type: ignore
+from bot.middlewares import DbSessionMiddleware, GroupMiddleware  # type: ignore
+from bot.middlewares.logging_middleware import LogAllEventsMiddleware
 from db.scheduler import start_scheduler
 from db.engine import get_sessionmaker
 from db.redis_instance import redis
@@ -18,7 +17,7 @@ from db.redis_instance import redis
 from settings import settings
 
 
-async def start():
+async def start() -> None:
     os.environ["TZ"] = settings.other.timezone
     time.tzset()
     logging.basicConfig(
@@ -38,11 +37,15 @@ async def start():
         scheduler=scheduler,
         storage=RedisStorage(redis=redis),
     )
+    dispatcher.workflow_data.update(redis=redis)
+    log_all_middleware = LogAllEventsMiddleware()
+    dispatcher.callback_query.middleware(log_all_middleware)
+    dispatcher.message.middleware(log_all_middleware)
     dispatcher.update.middleware(GroupMiddleware())
     dispatcher.update.middleware(DbSessionMiddleware(session_maker))
-    # dispatcher.include_router(supergroup_router)
+    dispatcher.include_router(supergroup_router)
     dispatcher.include_router(private_member_router)
-    # dispatcher.include_router(private_not_member_router)
+    dispatcher.include_router(private_not_member_router)
 
     async def start_bot() -> None:
         try:

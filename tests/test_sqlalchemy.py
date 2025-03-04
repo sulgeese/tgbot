@@ -1,10 +1,8 @@
-from typing import Type
-
 from sqlalchemy import inspect
 from sqlmodel import SQLModel
 
 
-def check_instance_lifecycle(instance: Type[SQLModel]) -> None:
+def check_instance_lifecycle(instance: SQLModel) -> None:
     state = inspect(instance)
     if state.session:
         print("Объект привязан к сессии.")

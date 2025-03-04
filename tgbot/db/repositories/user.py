@@ -5,7 +5,7 @@ from redis.asyncio import Redis
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from db.repo.base import BaseRepository
+from db.repositories.base import BaseRepository
 from db.models import UsersModel
 
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class UserRepository(BaseRepository[UsersModel]):
     def __init__(self, db: AsyncSession, redis: Redis):
-        super().__init__(db, redis, UsersModel)
+        super().__init__(db, redis, UsersModel, "id")
 
     async def create(self, user: UsersModel) -> Optional[UsersModel]:
         return await super().create(user)

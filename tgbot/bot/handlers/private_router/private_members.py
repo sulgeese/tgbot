@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from bot.filters.user import UserInGroup
-from bot.keyboard import reply, inline
+from bot.keyboards import reply, inline
 from .create_event import router as create_event_router
 from .delete_event import router as delete_event_router
 from .edit_event import router as edit_event_router

@@ -8,7 +8,7 @@ from redis.asyncio import Redis
 from sqlmodel import select, asc
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from db.repo.base import BaseRepository
+from db.repositories.base import BaseRepository
 from db.models import EventsModel
 
 
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class EventRepository(BaseRepository[EventsModel]):
     def __init__(self, db: AsyncSession, redis: Redis, scheduler: AsyncIOScheduler = None):
         self.scheduler = scheduler
-        super().__init__(db, redis, EventsModel)
+        super().__init__(db, redis, EventsModel, "id")
 
     async def create(self, event: EventsModel) -> Optional[EventsModel]:
         result = await super().create(event)
@@ -52,6 +52,7 @@ class EventRepository(BaseRepository[EventsModel]):
             return results.all()
         except Exception as err:
             logger.error(f"Cannot get events for user {user_id}: {err}")
+            return None
 
     async def _remove_job(self, event_id: UUID) -> None:
         try:

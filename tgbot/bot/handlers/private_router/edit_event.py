@@ -1,56 +1,44 @@
+import logging
 from typing import Any
 import uuid
 
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
-from sqlalchemy.ext.asyncio import AsyncSession
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from redis.asyncio import Redis
+from sqlmodel.ext.asyncio.session import AsyncSession
 
-from bot.handlers import bot_messages
-from bot.keyboard import inline
+from bot.handlers.private_router.utils import get_date, get_mentions, get_title, get_text, handle_event_update, process_events
+from bot.handlers.utils import send_edit_event_message, send_events_list
+from bot.keyboards import inline
 from bot.states import StepsForm
-from db.redis_instance import redis
-from db.repositories.event import EventRepository
-from db.repositories.user import UserRepository
-from utils import format_datetime
-from .utils import get_date, get_mentions, get_title, get_text, handle_event_update
+from bot.validate.callback_check import ensure_callback_message
+from db.repositories import EventRepository, UserRepository
+from db.models import EventsModel
+from bot.datetime_utils import normalize_datetime
 
 router = Router()
+
+logger = logging.getLogger(__name__)
 
 
 # Entrypoint to start editing
 @router.callback_query(F.data == "edit_events")
-async def edit_events_list(call: CallbackQuery, state: FSMContext, session: AsyncSession) -> None:
-    await bot_messages.send_events_list(call=call, session=session)
+@ensure_callback_message
+async def edit_events_list(call: CallbackQuery, state: FSMContext, session: AsyncSession, redis: Redis) -> None:
+    await send_events_list(call, session, redis)
     await state.set_state(StepsForm.EDIT_EVENTS)
-
-
-# Handle an event to edit
-@router.callback_query(StepsForm.EDIT_EVENTS, F.data.startswith("$"))
-async def edit_event(call: CallbackQuery, state: FSMContext, session: AsyncSession) -> None:
-    data = await EventRepository(session, redis).get(uuid.UUID(call.data[1:]))
-    print(data)
-    await state.update_data(
-        id=str(data.id),
-        title=data.title,
-        date=format_datetime(data.date),
-        text=data.text,
-        mentions=data.mentions
-    )
-    await call.message.edit_text(
-        text="<b>Что изменить?</b>",
-        parse_mode="HTML",
-        reply_markup=inline.edit_events,
-    )
 
 
 # Gets title from user
 @router.callback_query(StepsForm.EDIT_EVENTS, F.data == "edit_title")
+@ensure_callback_message
 async def edit_title(call: CallbackQuery, state: FSMContext) -> None:
-    data = await state.get_data()
-    await call.message.edit_text(
+    title = await state.get_value("title")
+    await call.message.edit_text(  # type: ignore
         text='<b>Текущее название: <code>{}</code>\nВведите новое</b>'
-        .format(data["title"]),
+        .format(title),
         parse_mode="HTML",
     )
     await state.set_state(StepsForm.EDIT_GET_TITLE)
@@ -63,7 +51,7 @@ async def on_success_title(message: Message, state: FSMContext) -> None:
         parse_mode="HTML",
     )
     await state.set_state(StepsForm.EDIT_EVENTS)
-    await bot_messages.send_edit_event_message(message=message, state=state)
+    await send_edit_event_message(message=message, state=state)
 
 
 router.message(StepsForm.EDIT_GET_TITLE, F.text)(get_title(on_success_title))
@@ -71,14 +59,16 @@ router.message(StepsForm.EDIT_GET_TITLE, F.text)(get_title(on_success_title))
 
 # Gets date from user
 @router.callback_query(StepsForm.EDIT_EVENTS, F.data == "edit_date")
-async def get_date_message(call: CallbackQuery, state: FSMContext) -> None:
-    data = await state.get_data()
-    await call.message.edit_text(
-        text="Текущая дата: <code>{}</code>\n<b>Введите новую</b>"
-        .format(data["date"]),
-        parse_mode="HTML",
-    )
-    await state.set_state(StepsForm.EDIT_GET_DATE)
+@ensure_callback_message
+async def get_date_message(call: CallbackQuery, state: FSMContext) -> Any:
+    if date := await state.get_value("date"):
+        await call.message.edit_text(  # type: ignore
+            text="Текущая дата: <code>{}</code>\n<b>Введите новую</b>"
+            .format(normalize_datetime(date)),
+            parse_mode="HTML",
+        )
+        return await state.set_state(StepsForm.EDIT_GET_DATE)
+    logger.error("Could not get date from state")
 
 
 async def on_success_date(message: Message, state: FSMContext) -> Any:
@@ -88,7 +78,7 @@ async def on_success_date(message: Message, state: FSMContext) -> Any:
         parse_mode="HTML",
     )
     await state.set_state(StepsForm.EDIT_EVENTS)
-    await bot_messages.send_edit_event_message(message=message, state=state)
+    await send_edit_event_message(message=message, state=state)
 
 
 router.message(StepsForm.EDIT_GET_DATE, F.text)(get_date(on_success_date))
@@ -96,11 +86,12 @@ router.message(StepsForm.EDIT_GET_DATE, F.text)(get_date(on_success_date))
 
 # Gets text from user
 @router.callback_query(StepsForm.EDIT_EVENTS, F.data == "edit_text")
+@ensure_callback_message
 async def edit_text(call: CallbackQuery, state: FSMContext) -> None:
-    data = await state.get_data()
-    await call.message.edit_text(
+    text = await state.get_value("text")
+    await call.message.edit_text(  # type: ignore
         text='<b>Текущий текст: <code>{}</code>\nВведите новый</b>'
-        .format(data["text"]),
+        .format(text),
         parse_mode="HTML",
     )
     await state.set_state(StepsForm.EDIT_GET_TEXT)
@@ -113,7 +104,7 @@ async def on_success_text(message: Message, state: FSMContext) -> None:
         parse_mode="HTML",
     )
     await state.set_state(StepsForm.EDIT_EVENTS)
-    await bot_messages.send_edit_event_message(message=message, state=state)
+    await send_edit_event_message(message=message, state=state)
 
 
 router.message(StepsForm.EDIT_GET_TEXT, F.text)(get_text(on_success_text))
@@ -121,46 +112,76 @@ router.message(StepsForm.EDIT_GET_TEXT, F.text)(get_text(on_success_text))
 
 # Gets mentions from user
 @router.callback_query(StepsForm.EDIT_EVENTS, F.data == "edit_mentions")
-async def edit_mentions(call: CallbackQuery, state: FSMContext, session: AsyncSession) -> None:
-    data = await state.get_data()
+@ensure_callback_message
+async def edit_mentions(call: CallbackQuery, state: FSMContext, session: AsyncSession, redis: Redis) -> None:
+    mentions = await state.get_value("mentions")
     await state.update_data(mentions="")
     users = await UserRepository(session, redis).get_users_in_group()
-    await call.message.edit_text(
+    await call.message.edit_text(  # type: ignore
         text='<b>Сейчас отмечены: {}\nКого отметить?</b>'
-        .format(data["mentions"]),
+        .format(mentions),
         parse_mode="HTML",
         reply_markup=inline.get_users_keyboard(users),
     )
     await state.set_state(StepsForm.EDIT_GET_MENTIONS)
 
 
+@ensure_callback_message
 async def on_success_mentions(call: CallbackQuery, state: FSMContext) -> None:
-    await call.message.edit_text(
+    await call.message.edit_text(  # type: ignore
         text='<b>Упоминания изменены ✅</b>',
         parse_mode="HTML",
     )
-    await bot_messages.send_edit_event_message(message=call.message, state=state)
+    await send_edit_event_message(message=call.message, state=state)  # type: ignore
 
 
 router.callback_query(StepsForm.EDIT_GET_MENTIONS)(get_mentions(on_success_mentions))
 
 
 # Saves or doesn't save the event and sends start menu
-async def on_event_save_confirmation(call: CallbackQuery) -> Any:
-    await call.message.edit_text(
+@ensure_callback_message
+async def on_event_save_confirmation(
+        call: CallbackQuery,
+        session: AsyncSession,
+        state: FSMContext,
+        redis: Redis,
+        scheduler: AsyncIOScheduler
+) -> Any:
+    data = await state.get_data()
+    event = EventsModel().model_validate({**data, "user_id": call.from_user.id})
+    await EventRepository(session, redis, scheduler).update(event)
+    await call.message.edit_text(  # type: ignore
         text="<b>Событие обновлено ✅</b>",
         parse_mode="HTML",
     )
+    await send_events_list(call, session, redis)
 
 
-async def on_event_save_cancellation(call: CallbackQuery) -> Any:
-    await call.message.edit_text(
+@ensure_callback_message
+async def on_event_save_cancellation(call: CallbackQuery, session: AsyncSession, redis: Redis) -> Any:
+    await call.message.edit_text(  # type: ignore
         text="<b>Действие отменено ❌</b>",
         parse_mode="HTML",
     )
+    await send_events_list(call, session, redis)
 
 
 router.callback_query(StepsForm.EDIT_EVENTS, F.data == "confirm")(
     handle_event_update(on_event_save_confirmation, on_event_save_cancellation))
 router.callback_query(StepsForm.EDIT_EVENTS, F.data == "cancel")(
     handle_event_update(on_event_save_confirmation, on_event_save_cancellation))
+
+
+# Handle event callback to edit
+@ensure_callback_message
+async def edit_event(call: CallbackQuery, state: FSMContext, session: AsyncSession, redis: Redis) -> Any:
+    if call.data and (data := await EventRepository(session, redis).get(uuid.UUID(call.data[1:]))):
+        await state.update_data({k: str(v) for k, v in data.model_dump().items()})
+        return await call.message.edit_text(  # type: ignore
+            text="<b>Что изменить?</b>",
+            parse_mode="HTML",
+            reply_markup=inline.edit_events,
+        )
+    logger.error("Could not get event from callback data")
+
+router.callback_query(StepsForm.EDIT_EVENTS)(process_events(edit_event))

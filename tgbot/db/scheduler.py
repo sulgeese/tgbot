@@ -6,7 +6,7 @@ from aiogram import Bot
 from settings import settings
 
 
-async def start_scheduler(bot: Bot):
+async def start_scheduler(bot: Bot) -> ContextSchedulerDecorator:
     jobstores = {'default': RedisJobStore(
         jobs_key='dispatched_trips_jobs',
         run_times_key='dispatched_trips_running',

@@ -1,31 +1,41 @@
-import uuid
+from uuid import uuid4, UUID
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List, Any
 
-from sqlalchemy.orm import mapped_column, relationship, Mapped
-from sqlalchemy import ForeignKey, BigInteger, DateTime, String, Text, Boolean, Uuid
+from pydantic import field_validator
+from sqlalchemy import BIGINT
+from sqlmodel import SQLModel, Field, Relationship
 
-from db.base import *
+from bot.datetime_utils import parse_datetime
 
 
-class UsersModel(Base):
+class UsersModel(SQLModel, table=True):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(BigInteger(), unique=True, nullable=False, primary_key=True)
-    username: Mapped[Optional[str]] = mapped_column(String(32))
-    first_name: Mapped[Optional[str]] = mapped_column(String(64))
-    last_name: Mapped[Optional[str]] = mapped_column(String(64))
-    in_group: Mapped[bool] = mapped_column(Boolean(), default=True)
-    events: Mapped[list["EventsModel"]] = relationship(back_populates="users")
+    id: int = Field(default=None, unique=True, nullable=False, primary_key=True, sa_type=BIGINT)
+    username: Optional[str] = Field(max_length=32, default=None)
+    first_name: Optional[str] = Field(max_length=64, default=None)
+    last_name: Optional[str] = Field(max_length=64)
+    in_group: bool = Field(default=True)
+
+    events: List["EventsModel"] = Relationship(back_populates="users")
 
 
-class EventsModel(Base):
+class EventsModel(SQLModel, table=True):
     __tablename__ = "events"
 
-    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4(), unique=True, nullable=False)
-    title: Mapped[Optional[str]] = mapped_column(Text)
-    date: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    text: Mapped[Optional[str]] = mapped_column(Text)
-    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey(column="users.id"))
-    mentions: Mapped[Optional[str]] = mapped_column(Text)
-    users: Mapped["UsersModel"] = relationship(back_populates='events')
+    id: UUID = Field(primary_key=True, default_factory=uuid4, unique=True, nullable=False)
+    title: str = Field(default="")
+    date: datetime = Field(default=datetime.now())
+    text: str = Field(default="")
+    user_id: int = Field(default="", foreign_key="users.id", sa_type=BIGINT)
+    mentions: str = Field(default="")
+
+    users: Optional[UsersModel] = Relationship(back_populates='events')
+
+    @field_validator("date", mode="before")
+    @classmethod
+    def parse_custom_date(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            return parse_datetime(value)
+        return value

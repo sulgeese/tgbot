@@ -1,11 +1,11 @@
 from aiogram import Router, F
 from aiogram.types import ChatMemberUpdated
 from aiogram.filters import ChatMemberUpdatedFilter, IS_MEMBER, IS_NOT_MEMBER
+from redis.asyncio import Redis
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel.ext.asyncio.session import AsyncSession
 
-from db.redis_instance import redis
-from db.repositories.event import EventRepository
+from bot.handlers.utils import update_user
 
 
 router = Router()
@@ -16,22 +16,9 @@ router.callback_query.filter(F.chat.type == "supergroup")
 
 
 @router.chat_member(ChatMemberUpdatedFilter(IS_NOT_MEMBER >> IS_MEMBER))
-async def supergroup_user_join_handler(event: ChatMemberUpdated, session: AsyncSession):
-    await EventRepository(session, redis).update(
-        user_id=event.new_chat_member.user.id,
-        username=event.new_chat_member.user.username,
-        first_name=event.new_chat_member.user.first_name,
-        last_name=event.new_chat_member.user.last_name,
-        in_group=True,
-    )
-
+async def supergroup_user_join_handler(event: ChatMemberUpdated, session: AsyncSession, redis: Redis) -> None:
+    await update_user(event, session, redis, in_group=True)
 
 @router.chat_member(ChatMemberUpdatedFilter(IS_MEMBER >> IS_NOT_MEMBER))
-async def supergroup_user_leave_handler(event: ChatMemberUpdated, session: AsyncSession):
-    await EventRepository(session, redis).update(
-        user_id=event.new_chat_member.user.id,
-        username=event.new_chat_member.user.username,
-        first_name=event.new_chat_member.user.first_name,
-        last_name=event.new_chat_member.user.last_name,
-        in_group=True,
-    )
+async def supergroup_user_leave_handler(event: ChatMemberUpdated, session: AsyncSession, redis: Redis) -> None:
+    await update_user(event, session, redis, in_group=False)

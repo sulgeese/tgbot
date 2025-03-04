@@ -13,7 +13,6 @@ class Bots:
 
 @dataclass
 class DataBase:
-    drivername: str
     database: str
     username: str
     password: str
@@ -40,7 +39,7 @@ class Settings:
     redis: Redis
 
 
-def get_settings(path: str):
+def get_settings(path: str) -> Settings:
     env = Env()
     env.read_env(path)
 
@@ -52,7 +51,6 @@ def get_settings(path: str):
             theme_id=env.int("BOT_THEME_ID"),
         ),
         db=DataBase(
-            drivername=env.str("DB_DRIVERNAME"),
             database=env.str("DB_NAME"),
             username=env.str("DB_USERNAME"),
             password=env.str("DB_PASSWORD"),

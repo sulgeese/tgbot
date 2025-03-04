@@ -12,8 +12,8 @@ try:
         host=settings.redis.host,
         port=settings.redis.port,
     )
-except Exception as e:
-    logger.error(f"Redis connection failed: {e}")
+except Exception as err:
+    logger.error(f"Redis connection failed: {err}")
     raise
 
 
